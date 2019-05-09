@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-fakethermostat",
+  "name": "homebridge-dummy-thermostat",
   "version": "0.0.1",
   "description": "Plugin for homebridge to create a fake thermostat accessory",
   "main": "index.js",
