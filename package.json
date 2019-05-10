@@ -10,7 +10,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TheJoker77/homebridge-fakethermostat.git"
+    "url": "git+https://github.com/TheJoker77/homebridge-dummy-thermostat.git"
   },
   "engines": {
     "homebridge": ">=0.2.0",
@@ -20,7 +20,7 @@
     "node-persist": "^2.1.0"
   },
   "bugs": {
-    "url": "https://github.com/TheJoker77/homebridge-fakethermostat/issues"
+    "url": "https://github.com/TheJoker77/homebridge-dummy-thermostat/issues"
   },
-  "homepage": "https://github.com/TheJoker77/homebridge-fakethermostat#readme"
+  "homepage": "https://github.com/TheJoker77/homebridge-dummy-thermostat#readme"
 }
