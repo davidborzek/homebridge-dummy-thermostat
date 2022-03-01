@@ -1,3 +1,4 @@
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 import {
 	API,
 	Logging,
@@ -9,7 +10,10 @@ import {
 	CharacteristicValue,
 } from 'homebridge';
 
-import storage from 'node-persist';
+import path from 'path';
+
+const heatingCoolingStates = ['OFF', 'HEATING', 'COOLING', 'AUTO'];
+const temperatureDisplayUnits = ['C°', 'F°'];
 
 export default class Thermostat implements AccessoryPlugin {
 	private readonly service: Service;
@@ -19,7 +23,13 @@ export default class Thermostat implements AccessoryPlugin {
 	private readonly manufacturer: string;
 	private readonly model: string;
 
-	private temperatureDisplayUnits: CharacteristicValue;
+	private readonly storagePath: string;
+
+	private temperatureDisplayUnits?: CharacteristicValue;
+	private currentHeatingCoolingState?: CharacteristicValue;
+	private targetHeatingCoolingState?: CharacteristicValue;
+	private currentTemperature?: CharacteristicValue;
+	private targetTemperature?: CharacteristicValue;
 
 	public constructor(
 		private readonly logger: Logging,
@@ -29,126 +39,100 @@ export default class Thermostat implements AccessoryPlugin {
 		this.manufacturer = config.manufacturer || 'DefaultManufacturer';
 		this.model = config.model || 'DefaultModel';
 
-		this.temperatureDisplayUnits = config.temperatureDisplayUnits || 0;
+		const uuid = api.hap.uuid.generate(config.name);
+		this.storagePath = path.join(
+			this.api.user.persistPath(),
+			`${config.accessory}.${uuid}.json`
+		);
 
-		this.logger.debug('Finished initializing accessory:', this.config.name);
+		this.loadState();
 
 		this.service = new this.api.hap.Service.Thermostat(this.config.name);
+		this.logger.debug('Finished initializing accessory:', this.config.name);
 
-		this.api.on('didFinishLaunching', async () => {
-			await this.initStorage();
+		this.api.on('shutdown', () => {
+			this.saveState();
+			this.logger.debug('State persisted.');
 		});
 	}
 
-	private async initStorage() {
-		const cacheDir = this.api.user.persistPath();
-		await storage.init({ dir: cacheDir });
+	private loadState(): void {
+		let rawFile = '{}';
+		if (existsSync(this.storagePath)) {
+			rawFile = readFileSync(this.storagePath, 'utf8');
+		}
+
+		const stored = JSON.parse(rawFile);
+
+		this.currentHeatingCoolingState = stored.currentHeatingCoolingState || 0;
+		this.targetHeatingCoolingState = stored.targetHeatingCoolingState || 0;
+		this.currentTemperature = stored.currentTemperature || 20;
+		this.targetTemperature = stored.targetTemperature || 20;
+		this.temperatureDisplayUnits =
+			stored.temperatureDisplayUnits ||
+			this.config.temperatureDisplayUnits ||
+			0;
+	}
+
+	private saveState(): void {
+		writeFileSync(
+			this.storagePath,
+			JSON.stringify({
+				currentHeatingCoolingState: this.currentHeatingCoolingState,
+				targetHeatingCoolingState: this.targetHeatingCoolingState,
+				currentTemperature: this.currentTemperature,
+				targetTemperature: this.targetTemperature,
+				temperatureDisplayUnits: this.temperatureDisplayUnits,
+			})
+		);
 	}
 
 	private getCurrentHeatingCoolingState(cb: CharacteristicGetCallback) {
-		const key = `${this.config.name}&CurrentHeatingCoolingState`;
-
-		storage.getItem(key).then(async (value) => {
-			if (value === undefined) {
-				value = 0;
-				await storage.setItem(key, value);
-			}
-
-			this.logger.info(`Load CurrentHeatingCoolingState: '${value}'`);
-			cb(null, value);
-		});
+		cb(null, this.currentHeatingCoolingState);
 	}
 
 	private getTargetHeatingCoolingState(cb: CharacteristicGetCallback) {
-		const key = `${this.config.name}&TargetHeatingCoolingState`;
-
-		storage.getItem(key).then(async (value) => {
-			if (value === undefined) {
-				value = 0;
-				await storage.setItem(key, value);
-			}
-
-			this.logger.info(`Load TargetHeatingCoolingState: '${value}'`);
-			cb(null, value);
-		});
+		cb(null, this.targetHeatingCoolingState);
 	}
 
 	private setTargetHeatingCoolingState(
 		value: CharacteristicValue,
 		cb: CharacteristicSetCallback
 	) {
-		storage
-			.setItem(`${this.config.name}&TargetHeatingCoolingState`, value)
-			.then(() => {
-				this.logger.info(`Set TargetHeatingCoolingState to '${value}'`);
+		this.targetHeatingCoolingState = value;
+		if (value < 3) {
+			this.currentHeatingCoolingState = value;
+		}
 
-				if (value < 3) {
-					storage
-						.setItem(`${this.config.name}&CurrentHeatingCoolingState`, value)
-						.then(() => {
-							this.service.setCharacteristic(
-								this.Characteristic.CurrentHeatingCoolingState,
-								value
-							);
+		this.logger.debug(
+			`Set HeatingCoolingState to '${heatingCoolingStates[value as number]}'`
+		);
 
-							this.logger.info(`Set CurrentHeatingCoolingState to '${value}'`);
-
-							cb();
-						});
-				} else {
-					cb();
-				}
-			});
+		cb();
 	}
 
 	private getCurrentTemperature(cb: CharacteristicGetCallback) {
-		const key = `${this.config.name}&CurrentTemperature`;
-
-		storage.getItem(key).then(async (value) => {
-			if (value === undefined) {
-				value = 20;
-				await storage.setItem(key, value);
-			}
-
-			this.logger.info(`Load CurrentTemperature: '${value}'`);
-			cb(null, value);
-		});
+		cb(null, this.currentTemperature);
 	}
 
 	private getTargetTemperature(cb: CharacteristicGetCallback) {
-		const key = `${this.config.name}&TargetTemperature`;
-
-		storage.getItem(key).then(async (value) => {
-			if (value === undefined) {
-				value = 20;
-				await storage.setItem(key, value);
-			}
-
-			this.logger.info(`Load TargetTemperature: '${value}'`);
-			cb(null, value);
-		});
+		cb(null, this.targetTemperature);
 	}
 
 	private setTargetTemperature(
 		value: CharacteristicValue,
 		cb: CharacteristicSetCallback
 	) {
-		storage.setItem(`${this.config.name}&TargetTemperature`, value).then(() => {
-			this.logger.info(`Set TargetTemperature to '${value}'`);
+		this.targetTemperature = value;
 
-			storage
-				.setItem(`${this.config.name}&CurrentTemperature`, value)
-				.then(() => {
-					this.service.setCharacteristic(
-						this.Characteristic.CurrentTemperature,
-						value
-					);
+		this.currentTemperature = value;
+		this.service.setCharacteristic(
+			this.Characteristic.CurrentTemperature,
+			value
+		);
 
-					this.logger.info(`Set CurrentTemperature to '${value}'`);
-
-					cb();
-				});
-		});
+		this.logger.debug(`Set Temperature to '${value}'`);
+		cb();
 	}
 
 	private getTemperatureDisplayUnits(cb: CharacteristicGetCallback) {
@@ -159,15 +143,15 @@ export default class Thermostat implements AccessoryPlugin {
 		value: CharacteristicValue,
 		cb: CharacteristicSetCallback
 	) {
-		storage
-			.setItem(`${this.config.name}&TemperatureDisplayUnits`, value)
-			.then(() => {
-				this.temperatureDisplayUnits = value;
+		this.temperatureDisplayUnits = value;
 
-				this.logger.info(`Set TemperatureDisplayUnits to '${value}'`);
+		this.logger.debug(
+			`Set TemperatureDisplayUnits to '${
+				temperatureDisplayUnits[value as number]
+			}'`
+		);
 
-				cb();
-			});
+		cb();
 	}
 
 	private getName(cb: CharacteristicGetCallback) {
