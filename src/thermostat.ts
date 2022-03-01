@@ -81,18 +81,23 @@ export default class Thermostat implements AccessoryPlugin {
       .setItem(`${this.config.name}&TargetHeatingCoolingState`, value)
       .then(() => {
         this.logger.info(`Set TargetHeatingCoolingState to '${value}'`);
-        storage
-          .setItem(`${this.config.name}&CurrentHeatingCoolingState`, value)
-          .then(() => {
-            this.service.setCharacteristic(
-              this.Characteristic.CurrentHeatingCoolingState,
-              value
-            );
 
-            this.logger.info(`Set CurrentHeatingCoolingState to '${value}'`);
+        if (value < 3) {
+          storage
+            .setItem(`${this.config.name}&CurrentHeatingCoolingState`, value)
+            .then(() => {
+              this.service.setCharacteristic(
+                this.Characteristic.CurrentHeatingCoolingState,
+                value
+              );
 
-            cb();
-          });
+              this.logger.info(`Set CurrentHeatingCoolingState to '${value}'`);
+
+              cb();
+            });
+        } else {
+          cb();
+        }
       });
   }
 
