@@ -54,7 +54,7 @@ export default class Thermostat implements AccessoryPlugin {
         await storage.setItem(key, value);
       }
 
-      this.logger.info(`CurrentHeatingCoolingState: '${value}'`);
+      this.logger.info(`Load CurrentHeatingCoolingState: '${value}'`);
       cb(null, value);
     });
   }
@@ -68,7 +68,7 @@ export default class Thermostat implements AccessoryPlugin {
         await storage.setItem(key, value);
       }
 
-      this.logger.info(`TargetHeatingCoolingState: '${value}'`);
+      this.logger.info(`Load TargetHeatingCoolingState: '${value}'`);
       cb(null, value);
     });
   }
@@ -110,7 +110,7 @@ export default class Thermostat implements AccessoryPlugin {
         await storage.setItem(key, value);
       }
 
-      this.logger.info(`CurrentTemperature: '${value}'`);
+      this.logger.info(`Load CurrentTemperature: '${value}'`);
       cb(null, value);
     });
   }
@@ -124,7 +124,7 @@ export default class Thermostat implements AccessoryPlugin {
         await storage.setItem(key, value);
       }
 
-      this.logger.info(`TargetTemperature: '${value}'`);
+      this.logger.info(`Load TargetTemperature: '${value}'`);
       cb(null, value);
     });
   }
