@@ -1,3 +1,5 @@
+[![npm Version](https://badgen.net/npm/v/homebridge-dummy-thermostat)](https://www.npmjs.com/package/homebridge-dummy-thermostat)
+
 # homebridge-dummy-thermostat
 Plugin for homebridge to create a fake thermostat accessory
 ## Installation
